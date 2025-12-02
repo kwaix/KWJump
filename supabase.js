@@ -1,162 +1,164 @@
+
+let supabase = null;
+let isOffline = false;
+let offlineReason = "";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const LOCAL_STORAGE_KEY = 'kwmejump_leaderboard';
+
 /**
- * Supabase Leaderboard Integration
- * 
- * Database Schema Requirement:
- * Table Name: 'leaderboard'
- * Columns:
- * - id: uuid (primary key)
- * - username: text
- * - score: int8
- * - created_at: timestamptz
- * 
- * RLS Policies:
- * - Enable Read for Anon
- * - Enable Insert for Anon
+ * Initializes the Supabase client.
+ * Tries to use the global window.supabase (from CDN) and the provided env vars.
  */
+export async function initSupabase() {
+    console.log("Initializing Supabase integration...");
 
-let supabase;
-let isOfflineMode = false;
-
-// Debug helper to check CDN load status immediately
-if (typeof window !== 'undefined') {
-    if (window.supabase) {
-        console.log("Supabase Library Status: Loaded via CDN.");
-    } else {
-        console.warn("Supabase Library Status: NOT FOUND on module load. It might load later or failed.");
-        // Attempt to check again after a short delay in init
+    // 1. Check Env Vars
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        enableOfflineMode("Missing Environment Variables (VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY)");
+        return;
     }
-}
 
-export async function initSupabase(url, key) {
-    // Retry finding window.supabase in case of async loading race condition
+    // 2. Check for CDN load (window.supabase)
+    // Retry a few times if the script is slow to load
+    let retries = 3;
+    while (retries > 0 && !window.supabase) {
+        console.warn(`Supabase library not found. Retrying... (${retries})`);
+        await new Promise(r => setTimeout(r, 500));
+        retries--;
+    }
+
     if (!window.supabase) {
-        console.warn("window.supabase not found immediately. Waiting 500ms...");
-        await new Promise(resolve => setTimeout(resolve, 500));
+        enableOfflineMode("Supabase CDN script failed to load or is blocked.");
+        return;
     }
 
-    if (url && key && window.supabase) {
-        try {
-            supabase = window.supabase.createClient(url, key);
+    // 3. Create Client
+    try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-            // Basic connectivity check (optional, but good for verification)
-            // Just creating the client doesn't mean we are connected.
-            // We can assume online for now, errors will be caught in operations.
-            console.log("Supabase initialized successfully (Client created).");
-            isOfflineMode = false;
-            window.supabaseOfflineReason = null; // Clear any previous reason
-        } catch (e) {
-            console.error("Supabase init failed:", e);
-            setOfflineMode(`Init Exception: ${e.message}`);
+        // Optional: Simple connectivity test (HEAD request)
+        // If this fails, we might still be "online" but the keys are wrong,
+        // or we have network issues.
+        const { error } = await supabase.from('leaderboard').select('count', { count: 'exact', head: true });
+
+        if (error) {
+            console.error("Supabase Connection Test Failed:", error);
+            // We don't force offline here immediately because it might be a temporary network blip,
+            // but for a game, it's safer to assume we might need offline fallback logic later.
+        } else {
+            console.log("Supabase connected successfully.");
         }
-    } else {
-        const reasons = [];
-        if (!url) reasons.push("Missing VITE_SUPABASE_URL");
-        if (!key) reasons.push("Missing VITE_SUPABASE_ANON_KEY");
-        if (!window.supabase) reasons.push("Supabase JS library not loaded (check CDN in index.html)");
 
-        setOfflineMode(`Missing Config/Lib: ${reasons.join(", ")}`);
+        isOffline = false;
+    } catch (err) {
+        console.error("Supabase Client Creation Failed:", err);
+        enableOfflineMode(`Initialization Error: ${err.message}`);
     }
 }
 
-function setOfflineMode(reason) {
-    console.warn(`Supabase integration disabled. Running in Offline Mode. Reason: ${reason}`);
-    console.warn("To enable Supabase, ensure environment variables are set in .env (local) or GitHub Secrets (production).");
-    isOfflineMode = true;
-    window.supabaseOfflineReason = reason; // Expose for debugging
+function enableOfflineMode(reason) {
+    isOffline = true;
+    offlineReason = reason;
+    window.supabaseOfflineReason = reason; // Exposed for UI/Debugging
+    console.warn("Switching to Offline Mode:", reason);
 }
 
 export function isOnline() {
-    return !isOfflineMode && !!supabase;
+    return !isOffline && supabase !== null;
 }
 
+/**
+ * Fetches the leaderboard.
+ * Returns local data if offline, or remote data if online.
+ */
 export async function fetchLeaderboard() {
-    if (isOfflineMode) {
-        console.log("Fetching local leaderboard (Offline Mode)");
-        return fetchLocalLeaderboard();
+    if (isOffline || !supabase) {
+        return getLocalLeaderboard();
     }
-    if (!supabase) return [];
-    
+
     try {
         const { data, error } = await supabase
             .from('leaderboard')
             .select('username, score')
             .order('score', { ascending: false })
             .limit(10);
-            
-        if (error) throw error;
-        return data;
-    } catch (e) {
-        console.error("Error fetching leaderboard:", e);
-        // Fallback to local if network fails despite being "online"
-        return fetchLocalLeaderboard();
+
+        if (error) {
+            console.error("Error fetching remote leaderboard:", error);
+            return getLocalLeaderboard(); // Fallback on error
+        }
+
+        return data || [];
+    } catch (err) {
+        console.error("Exception fetching leaderboard:", err);
+        return getLocalLeaderboard();
     }
 }
 
+/**
+ * Submits a score.
+ * Saves to local storage if offline.
+ */
 export async function submitScore(username, score) {
-    // offline 모드면 로컬 저장
-    if (isOfflineMode) {
-        return submitLocalScore(username, score);
-    }
-    // supabase가 초기화가 안 됐을 경우 (환경변수/스크립트 로드 문제)
-    if (!supabase) {
-        return { success: false, message: "Supabase not initialized (check env vars)" };
+    if (isOffline || !supabase) {
+        return saveLocalScore(username, score);
     }
 
     try {
-        console.log(`Submitting score: ${score} for user: ${username}`);
-
-        // Check for potential integer overflow (postgres int2=32767, int4=2147483647)
-        // If the user's DB has 'score' as int2, >32767 will fail.
-        if (score > 32767) {
-            console.warn("Score is > 32,767. If submission fails, check if your Supabase 'score' column is INT2 (SmallInt). It should be INT8 (BigInt) or INT4.");
-        }
-
         const { error } = await supabase
             .from('leaderboard')
             .insert([{ username, score }]);
-            
+
         if (error) {
-            console.error("Supabase Submit Error:", error);
-            if (error.code === '22003') { // Numeric value out of range
-                return { success: false, message: "Score too high for database (Check DB column type)" };
-            }
-            // Return actual error message to help debugging
-            return { success: false, message: `DB Error: ${error.message} (Code: ${error.code})` };
+            console.error("Error submitting score to Supabase:", error);
+            // Fallback to local if remote fails
+            const localResult = saveLocalScore(username, score);
+            return {
+                success: false, // It failed remotely
+                message: `Remote upload failed (${error.message}). Saved locally.`
+            };
         }
 
-        return { success: true };
-    } catch (e) {
-        console.error("Error submitting score:", e);
-        // Fallback to local if server error occurs (e.g. 500)
-        return submitLocalScore(username, score);
+        return { success: true, message: "Score submitted successfully!" };
+    } catch (err) {
+        console.error("Exception submitting score:", err);
+        saveLocalScore(username, score);
+        return { success: false, message: "Network error. Saved locally." };
     }
 }
 
-// --- Local Storage Fallback ---
-const LOCAL_STORAGE_KEY = 'kwmejump_leaderboard';
+// --- Local Storage Helpers ---
 
-function fetchLocalLeaderboard() {
+function getLocalLeaderboard() {
     try {
-        const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (!stored) return [];
-        return JSON.parse(stored).sort((a, b) => b.score - a.score).slice(0, 10);
+        const json = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (!json) return [];
+        let data = JSON.parse(json);
+        // Ensure it's an array
+        if (!Array.isArray(data)) return [];
+        // Sort descending
+        return data.sort((a, b) => b.score - a.score).slice(0, 10);
     } catch (e) {
-        console.error("Local leaderboard error:", e);
+        console.error("Error reading local leaderboard:", e);
         return [];
     }
 }
 
-function submitLocalScore(username, score) {
+function saveLocalScore(username, score) {
     try {
-        let list = fetchLocalLeaderboard();
-        list.push({ username, score });
-        // Keep only top 50 locally to save space
-        list.sort((a, b) => b.score - a.score);
-        list = list.slice(0, 50);
+        let data = getLocalLeaderboard();
+        data.push({ username, score });
+        // Sort and keep top 50
+        data.sort((a, b) => b.score - a.score);
+        data = data.slice(0, 50);
 
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
-        return { success: true, message: "Score saved (Offline Mode)" };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+        console.log(`Score saved locally: ${username} - ${score}`);
+        return { success: true, message: "Score saved locally." };
     } catch (e) {
-        return { success: false, message: "Failed to save locally" };
+        console.error("Error saving local score:", e);
+        return { success: false, message: "Failed to save score locally." };
     }
 }
