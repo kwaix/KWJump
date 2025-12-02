@@ -1,4 +1,4 @@
-import { initSupabase, fetchLeaderboard, submitScore } from './supabase.js';
+import { initSupabase, fetchLeaderboard, submitScore, isOnline } from './supabase.js';
 
 // Import assets to ensure Vite handles paths correctly
 import characterImgUrl from './src/assets/character.png';
@@ -6,6 +6,12 @@ import cloudImgUrl from './src/assets/cloud.svg';
 import platformImgUrl from './src/assets/platform.svg';
 import balloonBlueImgUrl from './src/assets/balloon_blue.svg';
 import balloonRedImgUrl from './src/assets/balloon_red.svg';
+
+// Global error handler for mobile debugging
+window.onerror = function(msg, url, lineNo, columnNo, error) {
+    console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo + '\nColumn: ' + columnNo + '\nError object: ' + JSON.stringify(error));
+    return false;
+};
 
 // --- Configuration ---
 const CANVAS_WIDTH = 480;  // Mobile-friendly width
@@ -48,6 +54,7 @@ let player = {
     vy: 0,
     facingRight: true,
     jumpForce: INITIAL_JUMP_FORCE,
+    currentJumpMultiplier: 1.0,
     hasDoubleJump: false
 };
 let platforms = [];
@@ -59,32 +66,69 @@ let cameraY = 0;
 let lastTime = 0;
 
 // --- Initialization ---
-window.onload = async () => {
-    canvas = document.getElementById('gameCanvas');
-    ctx = canvas.getContext('2d');
-    
-    // Resize canvas
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    
-    // Inputs
-    setupInputs();
-    
-    // Generate initial clouds
-    generateClouds();
+async function init() {
+    try {
+        console.log("Initializing Game...");
+        canvas = document.getElementById('gameCanvas');
+        if (!canvas) {
+            console.error("Canvas element not found!");
+            return;
+        }
+        ctx = canvas.getContext('2d');
 
-    // Load config from Vite environment variables
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    initSupabase(supabaseUrl, supabaseAnonKey);
-    
-    // Initial Render
-    updateLeaderboardDisplay();
-    requestAnimationFrame(gameLoop);
-};
+        // Resize canvas
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Inputs
+        setupInputs();
+
+        // Generate initial clouds
+        generateClouds();
+
+        // Load config from Vite environment variables
+        // Use try-catch for env access just in case
+        let connected = false;
+        try {
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            connected = await initSupabase(supabaseUrl, supabaseAnonKey);
+        } catch (e) {
+            console.warn("Env vars missing or failed, running offline.", e);
+            await initSupabase(null, null);
+        }
+
+        updateConnectionStatus(connected);
+
+        // Initial Render
+        updateLeaderboardDisplay();
+        requestAnimationFrame(gameLoop);
+        console.log("Game Initialized.");
+    } catch (e) {
+        console.error("Critical Init Error:", e);
+        alert("Game Init Error: " + e.message);
+    }
+}
+
+// Module-compatible Initialization
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    init();
+} else {
+    window.addEventListener('DOMContentLoaded', init);
+    // Fallback: if DOMContentLoaded already fired (unlikely with module but safe)
+    window.addEventListener('load', init);
+}
+
+function updateConnectionStatus(isOnline) {
+    const el = document.getElementById('connection-status');
+    if (el) {
+        el.className = isOnline ? 'online' : 'offline';
+        el.title = isOnline ? 'Online: Supabase Connected' : 'Offline Mode';
+    }
+}
 
 function resizeCanvas() {
+    if (!canvas) return;
     let scale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT);
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
@@ -93,25 +137,51 @@ function resizeCanvas() {
 }
 
 function setupInputs() {
-    // Touch (for canvas tapping fallback)
-    canvas.addEventListener('touchstart', handleTouchStart);
-    canvas.addEventListener('touchmove', handleTouchMove);
-    canvas.addEventListener('touchend', handleTouchEnd);
+    // Touch Events
+    // Control Zones (Bottom Half) for Movement
+    const leftZone = document.getElementById('zone-left');
+    const rightZone = document.getElementById('zone-right');
+
+    const handleLeft = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if (gameState === 'PLAYING') player.vx = -MOVE_SPEED;
+    };
     
-    // Tap to jump (double jump) anywhere on canvas if not touching buttons
+    const handleRight = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if (gameState === 'PLAYING') player.vx = MOVE_SPEED;
+    };
+
+    const stopMove = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if (gameState === 'PLAYING') player.vx = 0;
+    };
+
+    // Left Zone
+    leftZone.addEventListener('touchstart', handleLeft);
+    leftZone.addEventListener('mousedown', handleLeft);
+    leftZone.addEventListener('touchend', stopMove);
+    leftZone.addEventListener('mouseup', stopMove);
+    leftZone.addEventListener('mouseleave', stopMove);
+
+    // Right Zone
+    rightZone.addEventListener('touchstart', handleRight);
+    rightZone.addEventListener('mousedown', handleRight);
+    rightZone.addEventListener('touchend', stopMove);
+    rightZone.addEventListener('mouseup', stopMove);
+    rightZone.addEventListener('mouseleave', stopMove);
+
+    // Canvas Tap (Top Half - since bottom is covered by zones) for Jump
+    // Note: Since the control zones are overlaying the canvas at the bottom,
+    // clicking the canvas naturally means clicking the top half (or the start/gameover screens).
     canvas.addEventListener('touchstart', (e) => {
-         if (e.target.tagName !== 'BUTTON') {
+         // Only jump if we are not interacting with UI buttons
+         if (e.target.tagName !== 'BUTTON' && !e.target.classList.contains('control-zone')) {
              attemptJump();
          }
     });
     
-    // Mouse (for testing)
-    canvas.addEventListener('mousedown', handleTouchStart);
-    window.addEventListener('mouseup', () => {
-        if (gameState === 'PLAYING') player.vx = 0;
-    });
-
-    // Keyboard
+    // Keyboard fallback
     window.addEventListener('keydown', (e) => {
         if (gameState === 'START' && e.code === 'Space') startGame();
         if (gameState === 'PLAYING') {
@@ -134,26 +204,6 @@ function setupInputs() {
     document.getElementById('start-screen').addEventListener('click', startGame);
     document.getElementById('restart-btn').addEventListener('click', resetGame);
     document.getElementById('submit-score-btn').addEventListener('click', handleScoreSubmit);
-
-    // Mobile Control Buttons
-    const btnLeft = document.getElementById('btn-left');
-    const btnRight = document.getElementById('btn-right');
-
-    const startLeft = (e) => { e.preventDefault(); if (gameState === 'PLAYING') player.vx = -MOVE_SPEED; };
-    const startRight = (e) => { e.preventDefault(); if (gameState === 'PLAYING') player.vx = MOVE_SPEED; };
-    const stopMove = (e) => { e.preventDefault(); if (gameState === 'PLAYING') player.vx = 0; };
-
-    btnLeft.addEventListener('touchstart', startLeft);
-    btnLeft.addEventListener('mousedown', startLeft);
-    btnLeft.addEventListener('touchend', stopMove);
-    btnLeft.addEventListener('mouseup', stopMove);
-    btnLeft.addEventListener('mouseleave', stopMove);
-
-    btnRight.addEventListener('touchstart', startRight);
-    btnRight.addEventListener('mousedown', startRight);
-    btnRight.addEventListener('touchend', stopMove);
-    btnRight.addEventListener('mouseup', stopMove);
-    btnRight.addEventListener('mouseleave', stopMove);
 }
 
 // --- Game Logic ---
@@ -163,8 +213,8 @@ function startGame() {
     gameState = 'PLAYING';
     document.getElementById('start-screen').style.display = 'none';
     document.getElementById('game-over-screen').style.display = 'none';
-    document.getElementById('score-hud').style.display = 'block';
-    document.getElementById('controls').style.display = 'flex';
+    document.getElementById('score-hud').style.display = 'flex';
+    document.getElementById('controls-layer').style.display = 'flex';
     
     resetPlayer();
     generateInitialPlatforms();
@@ -176,7 +226,7 @@ function resetGame() {
     document.getElementById('game-over-screen').style.display = 'none';
     document.getElementById('start-screen').style.display = 'block';
     document.getElementById('score-hud').style.display = 'none';
-    document.getElementById('controls').style.display = 'none';
+    document.getElementById('controls-layer').style.display = 'none';
     score = 0;
 }
 
@@ -186,6 +236,7 @@ function resetPlayer() {
     player.vx = 0;
     player.vy = INITIAL_JUMP_FORCE;
     player.jumpForce = INITIAL_JUMP_FORCE;
+    player.currentJumpMultiplier = 1.0;
     player.hasDoubleJump = false;
     score = 0;
     highestY = player.y;
@@ -240,7 +291,7 @@ function spawnItem(platformX, platformY) {
         const x = platformX + (PLATFORM_WIDTH - ITEM_SIZE) / 2;
         const y = platformY - ITEM_SIZE - 10; // Floating slightly above
         items.push({ x, y, width: ITEM_SIZE, height: ITEM_SIZE * 1.33, type }); 
-        console.log(`Spawned ${type} balloon at ${x}, ${y}`);
+        // console.log(`Spawned ${type} balloon at ${x}, ${y}`);
     }
 }
 
@@ -318,7 +369,7 @@ function update(dt) {
                 player.x + player.width > p.x &&
                 player.x < p.x + p.width &&
                 player.y + player.height > p.y &&
-                player.y + player.height < p.y + p.height + (player.vy * dt) + 5 // Tolerance adjusted for dt
+                player.y + player.height < p.y + p.height + (player.vy * dt) + 10 // Increased tolerance
             ) {
                 // Correct position to be on top of platform
                 player.y = p.y - player.height;
@@ -338,9 +389,13 @@ function update(dt) {
             // Collected!
             if (item.type === 'blue') {
                 player.hasDoubleJump = true;
-                // Visual feedback could be added here
+                // Reset speed boost on Blue balloon
+                player.currentJumpMultiplier = 1.0;
+                player.jumpForce = INITIAL_JUMP_FORCE * player.currentJumpMultiplier;
             } else if (item.type === 'red') {
-                player.jumpForce *= 1.1; // Increase jump force by 10%
+                // Increase multiplier by 1%, max 10%
+                player.currentJumpMultiplier = Math.min(player.currentJumpMultiplier + 0.01, 1.10);
+                player.jumpForce = INITIAL_JUMP_FORCE * player.currentJumpMultiplier;
             }
             items.splice(index, 1);
         }
@@ -376,48 +431,10 @@ function gameOver() {
     gameState = 'GAMEOVER';
     document.getElementById('final-score').innerText = score;
     document.getElementById('score-hud').style.display = 'none';
-    document.getElementById('controls').style.display = 'none';
+    document.getElementById('controls-layer').style.display = 'none';
     document.getElementById('game-over-screen').style.display = 'block';
     
     updateLeaderboardDisplay();
-}
-
-// --- Input Handling Details ---
-function handleTouchStart(e) {
-    if (gameState === 'START' || gameState === 'GAMEOVER') {
-        if (gameState === 'START') startGame();
-        return;
-    }
-    
-    // Canvas tapping acts as fallback if not using buttons
-    // But buttons are overlaid, so this might be redundant or for testing on desktop without buttons
-    // Let's keep it but prevent conflict if buttons are used (buttons stop propagation usually)
-    
-    let clientX;
-    if (e.type === 'mousedown') {
-        clientX = e.clientX;
-    } else {
-        // Only process touches not on buttons
-        if (e.target.tagName === 'BUTTON') return;
-        e.preventDefault(); 
-        clientX = e.touches[0].clientX;
-    }
-
-    let canvasRect = canvas.getBoundingClientRect();
-    let scale = CANVAS_WIDTH / canvasRect.width;
-    let gameX = (clientX - canvasRect.left) * scale;
-    
-    if (gameX < CANVAS_WIDTH / 2) player.vx = -MOVE_SPEED;
-    else player.vx = MOVE_SPEED;
-}
-
-function handleTouchMove(e) {
-    if (e.target.tagName !== 'BUTTON') e.preventDefault(); 
-}
-
-function handleTouchEnd(e) {
-    // Canvas touch end
-     if (e.target.tagName !== 'BUTTON') player.vx = 0;
 }
 
 // --- Rendering ---
@@ -537,7 +554,6 @@ async function handleScoreSubmit() {
     const result = await submitScore(username, score);
 
     if (result.success) {
-        // supabase.js가 message를 주면 그걸 쓰고, 없으면 기본 문구
         alert(result.message || "Score submitted!");
         await updateLeaderboardDisplay();
         btn.style.display = 'none';
@@ -547,4 +563,3 @@ async function handleScoreSubmit() {
         btn.innerText = "Submit Score";
     }
 }
-
