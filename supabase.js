@@ -34,8 +34,15 @@ export async function initSupabase(url, key) {
         if (!key) reasons.push("Missing VITE_SUPABASE_ANON_KEY");
         if (!window.supabase) reasons.push("Supabase JS library not loaded (check CDN)");
 
-        console.warn(`Supabase integration disabled. Running in Offline Mode. Reason(s): ${reasons.join(", ")}`);
+        const reasonMsg = reasons.join(", ");
+        console.warn(`Supabase integration disabled. Running in Offline Mode. Reason(s): ${reasonMsg}`);
         console.warn("To enable Supabase, create a .env file with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+
+        // Expose reason for UI debugging
+        if (typeof window !== 'undefined') {
+            window.supabaseOfflineReason = reasonMsg;
+        }
+
         isOfflineMode = true;
         return false;
     }
