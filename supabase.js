@@ -22,23 +22,11 @@ export async function initSupabase(url, key) {
         try {
             supabase = window.supabase.createClient(url, key);
             console.log("Supabase initialized successfully.");
-
-            // Test connection by fetching count or a single row
-            const { error } = await supabase.from('leaderboard').select('count', { count: 'exact', head: true });
-
-            if (error) {
-                console.warn("Supabase connection test failed:", error);
-                isOfflineMode = true; // Fallback if connection fails even with keys
-                return false;
-            } else {
-                isOfflineMode = false;
-                return true;
-            }
+            isOfflineMode = false;
         } catch (e) {
             console.error("Supabase init failed:", e);
             console.warn("Falling back to offline mode.");
             isOfflineMode = true;
-            return false;
         }
     } else {
         const reasons = [];

@@ -10,6 +10,8 @@ import balloonRedImgUrl from './src/assets/balloon_red.svg';
 // Global error handler for mobile debugging
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo + '\nColumn: ' + columnNo + '\nError object: ' + JSON.stringify(error));
+    // Uncomment for aggressive debugging on mobile
+    // alert('Error: ' + msg);
     return false;
 };
 
@@ -66,7 +68,7 @@ let cameraY = 0;
 let lastTime = 0;
 
 // --- Initialization ---
-async function init() {
+function init() {
     try {
         console.log("Initializing Game...");
         canvas = document.getElementById('gameCanvas');
@@ -88,17 +90,14 @@ async function init() {
 
         // Load config from Vite environment variables
         // Use try-catch for env access just in case
-        let connected = false;
         try {
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
             const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-            connected = await initSupabase(supabaseUrl, supabaseAnonKey);
+            initSupabase(supabaseUrl, supabaseAnonKey);
         } catch (e) {
             console.warn("Env vars missing or failed, running offline.", e);
-            await initSupabase(null, null);
+            initSupabase(null, null);
         }
-
-        updateConnectionStatus(connected);
 
         // Initial Render
         updateLeaderboardDisplay();
@@ -119,14 +118,6 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
     window.addEventListener('load', init);
 }
 
-function updateConnectionStatus(isOnline) {
-    const el = document.getElementById('connection-status');
-    if (el) {
-        el.className = isOnline ? 'online' : 'offline';
-        el.title = isOnline ? 'Online: Supabase Connected' : 'Offline Mode';
-    }
-}
-
 function resizeCanvas() {
     if (!canvas) return;
     let scale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT);
@@ -138,14 +129,8 @@ function resizeCanvas() {
 
 function setupInputs() {
     // Touch Events
-    // Control Zones (Bottom Half) for Movement
-    const leftZone = document.getElementById('zone-left');
-    const rightZone = document.getElementById('zone-right');
-
-    const handleLeft = (e) => {
-        if(e.cancelable) e.preventDefault();
-        if (gameState === 'PLAYING') player.vx = -MOVE_SPEED;
-    };
+    // Note: We removed handleTouchStart from canvas for movement to prevent conflict with Tap-to-Jump.
+    // Movement is now controlled by onscreen buttons or keyboard.
     
     const handleRight = (e) => {
         if(e.cancelable) e.preventDefault();
@@ -181,7 +166,7 @@ function setupInputs() {
          }
     });
     
-    // Keyboard fallback
+    // Keyboard
     window.addEventListener('keydown', (e) => {
         if (gameState === 'START' && e.code === 'Space') startGame();
         if (gameState === 'PLAYING') {
@@ -204,6 +189,35 @@ function setupInputs() {
     document.getElementById('start-screen').addEventListener('click', startGame);
     document.getElementById('restart-btn').addEventListener('click', resetGame);
     document.getElementById('submit-score-btn').addEventListener('click', handleScoreSubmit);
+
+    // Mobile Control Buttons
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+
+    const startLeft = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if (gameState === 'PLAYING') player.vx = -MOVE_SPEED;
+    };
+    const startRight = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if (gameState === 'PLAYING') player.vx = MOVE_SPEED;
+    };
+    const stopMove = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if (gameState === 'PLAYING') player.vx = 0;
+    };
+
+    btnLeft.addEventListener('touchstart', startLeft);
+    btnLeft.addEventListener('mousedown', startLeft);
+    btnLeft.addEventListener('touchend', stopMove);
+    btnLeft.addEventListener('mouseup', stopMove);
+    btnLeft.addEventListener('mouseleave', stopMove);
+
+    btnRight.addEventListener('touchstart', startRight);
+    btnRight.addEventListener('mousedown', startRight);
+    btnRight.addEventListener('touchend', stopMove);
+    btnRight.addEventListener('mouseup', stopMove);
+    btnRight.addEventListener('mouseleave', stopMove);
 }
 
 // --- Game Logic ---
@@ -389,9 +403,6 @@ function update(dt) {
             // Collected!
             if (item.type === 'blue') {
                 player.hasDoubleJump = true;
-                // Reset speed boost on Blue balloon
-                player.currentJumpMultiplier = 1.0;
-                player.jumpForce = INITIAL_JUMP_FORCE * player.currentJumpMultiplier;
             } else if (item.type === 'red') {
                 // Increase multiplier by 1%, max 10%
                 player.currentJumpMultiplier = Math.min(player.currentJumpMultiplier + 0.01, 1.10);
