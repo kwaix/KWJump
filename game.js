@@ -23,7 +23,7 @@ const assets = {
     balloonRed: new Image()
 };
 
-assets.character.src = 'assets/character.png';
+assets.character.src = 'assets/character.svg';
 assets.cloud.src = 'assets/cloud.svg';
 assets.platform.src = 'assets/platform.svg';
 assets.balloonBlue.src = 'assets/balloon_blue.svg';
@@ -518,13 +518,13 @@ async function handleScoreSubmit() {
     btn.disabled = true;
     btn.innerText = "Submitting...";
     
-    const success = await submitScore(username, score);
-    if (success) {
+    const result = await submitScore(username, score);
+    if (result.success) {
         alert("Score submitted!");
         await updateLeaderboardDisplay();
         btn.style.display = 'none';
     } else {
-        alert("Failed to submit score. Check console or config.");
+        alert(`Failed to submit score: ${result.message}`);
         btn.disabled = false;
         btn.innerText = "Submit Score";
     }
