@@ -1,5 +1,12 @@
 import { initSupabase, fetchLeaderboard, submitScore } from './supabase.js';
 
+// Import assets to ensure Vite handles paths correctly
+import characterImgUrl from './src/assets/character.png';
+import cloudImgUrl from './src/assets/cloud.svg';
+import platformImgUrl from './src/assets/platform.svg';
+import balloonBlueImgUrl from './src/assets/balloon_blue.svg';
+import balloonRedImgUrl from './src/assets/balloon_red.svg';
+
 // --- Configuration ---
 const CANVAS_WIDTH = 480;  // Mobile-friendly width
 const CANVAS_HEIGHT = 800;
@@ -23,11 +30,11 @@ const assets = {
     balloonRed: new Image()
 };
 
-assets.character.src = 'assets/character.png';
-assets.cloud.src = 'assets/cloud.svg';
-assets.platform.src = 'assets/platform.svg';
-assets.balloonBlue.src = 'assets/balloon_blue.svg';
-assets.balloonRed.src = 'assets/balloon_red.svg';
+assets.character.src = characterImgUrl;
+assets.cloud.src = cloudImgUrl;
+assets.platform.src = platformImgUrl;
+assets.balloonBlue.src = balloonBlueImgUrl;
+assets.balloonRed.src = balloonRedImgUrl;
 
 // --- Game State ---
 let canvas, ctx;
@@ -78,9 +85,15 @@ window.onload = async () => {
 };
 
 function resizeCanvas() {
+    // Keep internal resolution fixed, scale with CSS
     let scale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT);
+
+    // To support High DPI displays, we could increase canvas.width/height and scale context,
+    // but for this retro-style game, keeping 480x800 is fine.
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
+
+    // CSS scaling
     canvas.style.width = (CANVAS_WIDTH * scale) + 'px';
     canvas.style.height = (CANVAS_HEIGHT * scale) + 'px';
 }
@@ -477,11 +490,20 @@ function draw() {
 function gameLoop(timestamp) {
     // Delta time calculation
     if (!lastTime) lastTime = timestamp;
-    const dt = (timestamp - lastTime) / 1000;
+
+    // Safety check for large dt (e.g. tab background)
+    let dt = (timestamp - lastTime) / 1000;
+    if (dt > 0.1) dt = 0.1; // Cap at 100ms
+
     lastTime = timestamp;
 
-    update(dt);
-    draw();
+    try {
+        update(dt);
+        draw();
+    } catch (e) {
+        console.error("Game Loop Error:", e);
+    }
+
     requestAnimationFrame(gameLoop);
 }
 
@@ -518,13 +540,13 @@ async function handleScoreSubmit() {
     btn.disabled = true;
     btn.innerText = "Submitting...";
     
-    const success = await submitScore(username, score);
-    if (success) {
-        alert("Score submitted!");
+    const result = await submitScore(username, score);
+    if (result.success) {
+        alert(result.message || "Score submitted!");
         await updateLeaderboardDisplay();
         btn.style.display = 'none';
     } else {
-        alert("Failed to submit score. Check console or config.");
+        alert(`Failed to submit score: ${result.message}`);
         btn.disabled = false;
         btn.innerText = "Submit Score";
     }
