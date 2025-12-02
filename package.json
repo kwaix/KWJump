@@ -11,8 +11,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
-    "vite": "^7.2.6"
+    "vite": "^5.2.0"
   }
 }

@@ -12,11 +12,13 @@ const PLATFORM_HEIGHT = 20;
 // --- Assets ---
 const assets = {
     character: new Image(),
-    background: null, // Will be generated
-    platform: null // Will be generated
+    cloud: new Image(),
+    platform: new Image()
 };
 
 assets.character.src = 'assets/character.png';
+assets.cloud.src = 'assets/cloud.svg';
+assets.platform.src = 'assets/platform.svg';
 
 // --- Game State ---
 let canvas, ctx;
@@ -288,23 +290,27 @@ function draw() {
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     
     // Draw Clouds
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     clouds.forEach(c => {
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
-        ctx.arc(c.x + c.size * 0.5, c.y - c.size * 0.2, c.size * 0.8, 0, Math.PI * 2);
-        ctx.arc(c.x - c.size * 0.5, c.y - c.size * 0.2, c.size * 0.8, 0, Math.PI * 2);
-        ctx.fill();
+        if (assets.cloud.complete && assets.cloud.naturalHeight !== 0) {
+            ctx.drawImage(assets.cloud, c.x, c.y, c.size * 2, c.size * 1.2);
+        } else {
+            // Fallback drawing if image not loaded
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
     });
 
     // Draw Platforms
-    ctx.fillStyle = '#4CAF50';
     platforms.forEach(p => {
-        ctx.fillRect(p.x, p.y, p.width, p.height);
-        // Add simple detail
-        ctx.fillStyle = '#388E3C';
-        ctx.fillRect(p.x, p.y + p.height - 5, p.width, 5);
-        ctx.fillStyle = '#4CAF50';
+        if (assets.platform.complete && assets.platform.naturalHeight !== 0) {
+            ctx.drawImage(assets.platform, p.x, p.y, p.width, p.height);
+        } else {
+            // Fallback drawing
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(p.x, p.y, p.width, p.height);
+        }
     });
 
     // Draw Player
