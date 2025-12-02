@@ -535,7 +535,9 @@ async function handleScoreSubmit() {
     btn.innerText = "Submitting...";
     
     const result = await submitScore(username, score);
+
     if (result.success) {
+        // supabase.js가 message를 주면 그걸 쓰고, 없으면 기본 문구
         alert(result.message || "Score submitted!");
         await updateLeaderboardDisplay();
         btn.style.display = 'none';
@@ -545,3 +547,4 @@ async function handleScoreSubmit() {
         btn.innerText = "Submit Score";
     }
 }
+

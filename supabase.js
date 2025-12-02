@@ -19,17 +19,11 @@ let isOfflineMode = false;
 
 export function initSupabase(url, key) {
     if (url && key && window.supabase) {
-        try {
-            supabase = window.supabase.createClient(url, key);
-            console.log("Supabase initialized");
-            isOfflineMode = false;
-        } catch (e) {
-            console.error("Supabase initialization failed:", e);
-            console.warn("Switching to offline mode due to error.");
-            isOfflineMode = true;
-        }
+        supabase = window.supabase.createClient(url, key);
+        console.log("Supabase initialized");
+        isOfflineMode = false;
     } else {
-        console.warn("Supabase credentials missing or script not loaded. Switching to offline mode.");
+        console.warn("Supabase credentials missing. Switching to offline mode.");
         isOfflineMode = true;
     }
 }
@@ -51,16 +45,20 @@ export async function fetchLeaderboard() {
         return data;
     } catch (e) {
         console.error("Error fetching leaderboard:", e);
-        // Fallback to local if network fails? For now, just return empty or local.
+        // 네트워크/서버 문제면 로컬 리더보드로 fallback
         return fetchLocalLeaderboard();
     }
 }
 
 export async function submitScore(username, score) {
+    // offline 모드면 로컬 저장
     if (isOfflineMode) {
         return submitLocalScore(username, score);
     }
-    if (!supabase) return { success: false, message: "Supabase not initialized" };
+    // supabase가 초기화가 안 됐을 경우 (환경변수/스크립트 로드 문제)
+    if (!supabase) {
+        return { success: false, message: "Supabase not initialized (check env vars)" };
+    }
 
     try {
         const { error } = await supabase
@@ -68,10 +66,10 @@ export async function submitScore(username, score) {
             .insert([{ username, score }]);
             
         if (error) throw error;
+
         return { success: true };
     } catch (e) {
         console.error("Error submitting score:", e);
-        // Optional: Try saving locally if network fails
         return { success: false, message: e.message || "Unknown error" };
     }
 }
