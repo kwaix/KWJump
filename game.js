@@ -94,6 +94,11 @@ function init() {
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
             const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
             initSupabase(supabaseUrl, supabaseAnonKey);
+
+            // Debugging helper for UI
+            if (window.supabaseOfflineReason) {
+                console.log("Supabase Offline Reason:", window.supabaseOfflineReason);
+            }
         } catch (e) {
             console.warn("Env vars missing or failed, running offline.", e);
             initSupabase(null, null);
@@ -202,22 +207,22 @@ function setupInputs() {
         if(e.cancelable) e.preventDefault();
         if (gameState === 'PLAYING') player.vx = MOVE_SPEED;
     };
-    const stopMove = (e) => {
+    const stopBtnMove = (e) => {
         if(e.cancelable) e.preventDefault();
         if (gameState === 'PLAYING') player.vx = 0;
     };
 
     btnLeft.addEventListener('touchstart', startLeft);
     btnLeft.addEventListener('mousedown', startLeft);
-    btnLeft.addEventListener('touchend', stopMove);
-    btnLeft.addEventListener('mouseup', stopMove);
-    btnLeft.addEventListener('mouseleave', stopMove);
+    btnLeft.addEventListener('touchend', stopBtnMove);
+    btnLeft.addEventListener('mouseup', stopBtnMove);
+    btnLeft.addEventListener('mouseleave', stopBtnMove);
 
     btnRight.addEventListener('touchstart', startRight);
     btnRight.addEventListener('mousedown', startRight);
-    btnRight.addEventListener('touchend', stopMove);
-    btnRight.addEventListener('mouseup', stopMove);
-    btnRight.addEventListener('mouseleave', stopMove);
+    btnRight.addEventListener('touchend', stopBtnMove);
+    btnRight.addEventListener('mouseup', stopBtnMove);
+    btnRight.addEventListener('mouseleave', stopBtnMove);
 }
 
 // --- Game Logic ---

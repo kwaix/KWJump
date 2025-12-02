@@ -96,7 +96,8 @@ export async function submitScore(username, score) {
             if (error.code === '22003') { // Numeric value out of range
                 return { success: false, message: "Score too high for database (Check DB column type)" };
             }
-            throw error;
+            // Return actual error message to help debugging
+            return { success: false, message: `DB Error: ${error.message} (Code: ${error.code})` };
         }
 
         return { success: true };
