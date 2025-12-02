@@ -10,7 +10,8 @@ body {
 #game-container {
     position: relative;
     width: 100vw;
-    height: 100vh;
+    height: 100vh; /* Fallback */
+    height: 100dvh; /* Mobile friendly dynamic viewport height */
     display: flex;
     justify-content: center;
     align-items: center;
