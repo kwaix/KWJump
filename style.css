@@ -46,6 +46,7 @@ canvas {
     pointer-events: auto; /* Re-enable clicks for buttons */
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     max-width: 80%;
+    z-index: 20; /* Ensure above controls */
 }
 
 h1 {
@@ -77,6 +78,27 @@ button:active {
     color: white;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10;
+}
+
+#connection-status {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #ccc; /* Default gray (unknown) */
+    border: 2px solid white;
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+#connection-status.online {
+    background-color: #4CAF50; /* Green */
+}
+
+#connection-status.offline {
+    background-color: #F44336; /* Red */
 }
 
 #username-input {
@@ -102,33 +124,28 @@ button:active {
     border-bottom: 1px solid #eee;
 }
 
-/* Mobile Controls */
-#controls {
+/* Mobile Controls Zones */
+#controls-layer {
     position: absolute;
-    bottom: 20px;
+    bottom: 0;
+    left: 0;
     width: 100%;
+    height: 50%; /* Bottom half of screen */
     display: flex;
-    justify-content: space-between;
-    padding: 0 40px;
-    box-sizing: border-box;
-    pointer-events: none; /* Let clicks pass through container */
+    pointer-events: none; /* Container passes clicks */
 }
 
-.control-btn {
-    pointer-events: auto; /* Re-enable clicks for buttons */
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.5);
-    color: #333;
-    font-size: 2rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    user-select: none;
-    -webkit-user-select: none;
+.control-zone {
+    width: 50%;
+    height: 100%;
+    pointer-events: auto; /* Zones catch clicks */
+    /* background-color: rgba(255, 0, 0, 0.1); */ /* Uncomment for debug visibility */
 }
 
-.control-btn:active {
-    background-color: rgba(255, 255, 255, 0.8);
+#zone-left {
+    /* left side */
+}
+
+#zone-right {
+    /* right side */
 }

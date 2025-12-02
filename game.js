@@ -1,4 +1,4 @@
-import { initSupabase, fetchLeaderboard, submitScore } from './supabase.js';
+import { initSupabase, fetchLeaderboard, submitScore, isOnline } from './supabase.js';
 
 // Import assets to ensure Vite handles paths correctly
 import characterImgUrl from './src/assets/character.png';
@@ -56,6 +56,7 @@ let player = {
     vy: 0,
     facingRight: true,
     jumpForce: INITIAL_JUMP_FORCE,
+    currentJumpMultiplier: 1.0,
     hasDoubleJump: false
 };
 let platforms = [];
@@ -131,9 +132,36 @@ function setupInputs() {
     // Note: We removed handleTouchStart from canvas for movement to prevent conflict with Tap-to-Jump.
     // Movement is now controlled by onscreen buttons or keyboard.
     
-    // Tap to jump (double jump) anywhere on canvas if not touching buttons
+    const handleRight = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if (gameState === 'PLAYING') player.vx = MOVE_SPEED;
+    };
+
+    const stopMove = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if (gameState === 'PLAYING') player.vx = 0;
+    };
+
+    // Left Zone
+    leftZone.addEventListener('touchstart', handleLeft);
+    leftZone.addEventListener('mousedown', handleLeft);
+    leftZone.addEventListener('touchend', stopMove);
+    leftZone.addEventListener('mouseup', stopMove);
+    leftZone.addEventListener('mouseleave', stopMove);
+
+    // Right Zone
+    rightZone.addEventListener('touchstart', handleRight);
+    rightZone.addEventListener('mousedown', handleRight);
+    rightZone.addEventListener('touchend', stopMove);
+    rightZone.addEventListener('mouseup', stopMove);
+    rightZone.addEventListener('mouseleave', stopMove);
+
+    // Canvas Tap (Top Half - since bottom is covered by zones) for Jump
+    // Note: Since the control zones are overlaying the canvas at the bottom,
+    // clicking the canvas naturally means clicking the top half (or the start/gameover screens).
     canvas.addEventListener('touchstart', (e) => {
-         if (e.target.tagName !== 'BUTTON') {
+         // Only jump if we are not interacting with UI buttons
+         if (e.target.tagName !== 'BUTTON' && !e.target.classList.contains('control-zone')) {
              attemptJump();
          }
     });
@@ -199,8 +227,8 @@ function startGame() {
     gameState = 'PLAYING';
     document.getElementById('start-screen').style.display = 'none';
     document.getElementById('game-over-screen').style.display = 'none';
-    document.getElementById('score-hud').style.display = 'block';
-    document.getElementById('controls').style.display = 'flex';
+    document.getElementById('score-hud').style.display = 'flex';
+    document.getElementById('controls-layer').style.display = 'flex';
     
     resetPlayer();
     generateInitialPlatforms();
@@ -212,7 +240,7 @@ function resetGame() {
     document.getElementById('game-over-screen').style.display = 'none';
     document.getElementById('start-screen').style.display = 'block';
     document.getElementById('score-hud').style.display = 'none';
-    document.getElementById('controls').style.display = 'none';
+    document.getElementById('controls-layer').style.display = 'none';
     score = 0;
 }
 
@@ -222,6 +250,7 @@ function resetPlayer() {
     player.vx = 0;
     player.vy = INITIAL_JUMP_FORCE;
     player.jumpForce = INITIAL_JUMP_FORCE;
+    player.currentJumpMultiplier = 1.0;
     player.hasDoubleJump = false;
     score = 0;
     highestY = player.y;
@@ -375,7 +404,9 @@ function update(dt) {
             if (item.type === 'blue') {
                 player.hasDoubleJump = true;
             } else if (item.type === 'red') {
-                player.jumpForce *= 1.1; // Increase jump force by 10%
+                // Increase multiplier by 1%, max 10%
+                player.currentJumpMultiplier = Math.min(player.currentJumpMultiplier + 0.01, 1.10);
+                player.jumpForce = INITIAL_JUMP_FORCE * player.currentJumpMultiplier;
             }
             items.splice(index, 1);
         }
@@ -411,7 +442,7 @@ function gameOver() {
     gameState = 'GAMEOVER';
     document.getElementById('final-score').innerText = score;
     document.getElementById('score-hud').style.display = 'none';
-    document.getElementById('controls').style.display = 'none';
+    document.getElementById('controls-layer').style.display = 'none';
     document.getElementById('game-over-screen').style.display = 'block';
     
     updateLeaderboardDisplay();

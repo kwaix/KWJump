@@ -17,7 +17,7 @@
 let supabase;
 let isOfflineMode = false;
 
-export function initSupabase(url, key) {
+export async function initSupabase(url, key) {
     if (url && key && window.supabase) {
         try {
             supabase = window.supabase.createClient(url, key);
@@ -37,7 +37,12 @@ export function initSupabase(url, key) {
         console.warn(`Supabase integration disabled. Running in Offline Mode. Reason(s): ${reasons.join(", ")}`);
         console.warn("To enable Supabase, create a .env file with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
         isOfflineMode = true;
+        return false;
     }
+}
+
+export function isOnline() {
+    return !isOfflineMode && !!supabase;
 }
 
 export async function fetchLeaderboard() {
@@ -74,16 +79,31 @@ export async function submitScore(username, score) {
     }
 
     try {
+        console.log(`Submitting score: ${score} for user: ${username}`);
+
+        // Check for potential integer overflow (postgres int2=32767, int4=2147483647)
+        // If the user's DB has 'score' as int2, >32767 will fail.
+        if (score > 32767) {
+            console.warn("Score is > 32,767. If submission fails, check if your Supabase 'score' column is INT2 (SmallInt). It should be INT8 (BigInt) or INT4.");
+        }
+
         const { error } = await supabase
             .from('leaderboard')
             .insert([{ username, score }]);
             
-        if (error) throw error;
+        if (error) {
+            console.error("Supabase Submit Error:", error);
+            if (error.code === '22003') { // Numeric value out of range
+                return { success: false, message: "Score too high for database (Check DB column type)" };
+            }
+            throw error;
+        }
 
         return { success: true };
     } catch (e) {
         console.error("Error submitting score:", e);
-        return { success: false, message: e.message || "Unknown error" };
+        // Fallback to local if server error occurs (e.g. 500)
+        return submitLocalScore(username, score);
     }
 }
 
