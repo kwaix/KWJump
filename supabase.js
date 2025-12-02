@@ -17,7 +17,23 @@
 let supabase;
 let isOfflineMode = false;
 
+// Debug helper to check CDN load status immediately
+if (typeof window !== 'undefined') {
+    if (window.supabase) {
+        console.log("Supabase Library Status: Loaded via CDN.");
+    } else {
+        console.warn("Supabase Library Status: NOT FOUND on module load. It might load later or failed.");
+        // Attempt to check again after a short delay in init
+    }
+}
+
 export async function initSupabase(url, key) {
+    // Retry finding window.supabase in case of async loading race condition
+    if (!window.supabase) {
+        console.warn("window.supabase not found immediately. Waiting 500ms...");
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
     if (url && key && window.supabase) {
         try {
             supabase = window.supabase.createClient(url, key);
