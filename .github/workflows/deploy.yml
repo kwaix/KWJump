@@ -34,6 +34,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Debug Secrets Availability
+        run: |
+          echo "Checking for secrets availability..."
+          if [ -n "$CHECK_SUPABASE_URL" ]; then echo "SUPABASE_URL is set"; else echo "SUPABASE_URL is missing"; fi
+          if [ -n "$CHECK_SUPABASEURL" ]; then echo "SUPABASEURL is set"; else echo "SUPABASEURL is missing"; fi
+          if [ -n "$CHECK_SUPABASE_ANON_KEY" ]; then echo "SUPABASE_ANON_KEY is set"; else echo "SUPABASE_ANON_KEY is missing"; fi
+          if [ -n "$CHECK_ANONKEY" ]; then echo "ANONKEY is set"; else echo "ANONKEY is missing"; fi
+        env:
+          CHECK_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          CHECK_SUPABASEURL: ${{ secrets.SUPABASEURL }}
+          CHECK_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          CHECK_ANONKEY: ${{ secrets.ANONKEY }}
+
       - name: Build
         run: npm run build
         env:
