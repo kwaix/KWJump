@@ -207,6 +207,15 @@ function generateInitialPlatforms() {
     let currentY = CANVAS_HEIGHT - 50;
     let currentX = CANVAS_WIDTH / 2 - PLATFORM_WIDTH / 2;
 
+    // Generate first few platforms easier
+    for (let i = 0; i < 5; i++) {
+        const next = generateNextPlatformCoordinates(currentX, currentY, true); // True for "easy mode"
+        currentX = next.x;
+        currentY = next.y;
+        platforms.push({ x: currentX, y: currentY, width: PLATFORM_WIDTH, height: PLATFORM_HEIGHT });
+        spawnItem(currentX, currentY);
+    }
+
     while (currentY > -1000) { 
         const next = generateNextPlatformCoordinates(currentX, currentY);
         currentX = next.x;
@@ -219,21 +228,22 @@ function generateInitialPlatforms() {
 }
 
 function spawnItem(platformX, platformY) {
-    if (Math.random() < 0.15) { // 15% chance
+    if (Math.random() < 0.4) { // Increased to 40% chance for better visibility
         const type = Math.random() < 0.5 ? 'blue' : 'red';
         const x = platformX + (PLATFORM_WIDTH - ITEM_SIZE) / 2;
         const y = platformY - ITEM_SIZE - 10; // Floating slightly above
-        items.push({ x, y, width: ITEM_SIZE, height: ITEM_SIZE * 1.33, type }); // Height aspect ratio
+        items.push({ x, y, width: ITEM_SIZE, height: ITEM_SIZE * 1.33, type }); 
+        console.log(`Spawned ${type} balloon at ${x}, ${y}`);
     }
 }
 
-function generateNextPlatformCoordinates(prevX, prevY) {
+function generateNextPlatformCoordinates(prevX, prevY, easy = false) {
     const minGap = 60;
-    const maxGap = 100;
+    const maxGap = easy ? 80 : 100; // Lower max gap for easy mode
     const yGap = minGap + Math.random() * (maxGap - minGap);
     const newY = prevY - yGap;
 
-    const maxXDist = 180; 
+    const maxXDist = easy ? 80 : 120; // Reduced max horizontal distance (was 180)
     let xDist = (Math.random() - 0.5) * 2 * maxXDist;
     
     let newX = prevX + xDist;
