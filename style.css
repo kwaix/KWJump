@@ -100,3 +100,34 @@ button:active {
     padding: 5px 0;
     border-bottom: 1px solid #eee;
 }
+
+/* Mobile Controls */
+#controls {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 40px;
+    box-sizing: border-box;
+    pointer-events: none; /* Let clicks pass through container */
+}
+
+.control-btn {
+    pointer-events: auto; /* Re-enable clicks for buttons */
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    color: #333;
+    font-size: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.control-btn:active {
+    background-color: rgba(255, 255, 255, 0.8);
+}
