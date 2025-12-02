@@ -44,7 +44,7 @@ export async function fetchLeaderboard() {
 }
 
 export async function submitScore(username, score) {
-    if (!supabase) return false;
+    if (!supabase) return { success: false, message: "Supabase not initialized (check env vars)" };
 
     try {
         const { error } = await supabase
@@ -52,9 +52,9 @@ export async function submitScore(username, score) {
             .insert([{ username, score }]);
             
         if (error) throw error;
-        return true;
+        return { success: true };
     } catch (e) {
         console.error("Error submitting score:", e);
-        return false;
+        return { success: false, message: e.message || "Unknown error" };
     }
 }
