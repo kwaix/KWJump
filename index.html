@@ -13,7 +13,8 @@
         <div id="ui-layer">
             <div id="start-screen">
                 <h1>KWMeJump</h1>
-                <p>Tap to Start</p>
+                <p>Tap Top to Jump</p>
+                <p>Tap Bottom Left/Right to Move</p>
                 <div id="leaderboard-preview">Loading Leaderboard...</div>
             </div>
             <div id="game-over-screen" style="display: none;">
@@ -24,12 +25,15 @@
                 <button id="restart-btn">Try Again</button>
                 <div id="leaderboard-list"></div>
             </div>
-            <div id="score-hud" style="display: none;">Score: <span id="current-score">0</span></div>
+            <div id="score-hud" style="display: none;">
+                Score: <span id="current-score">0</span>
+                <div id="connection-status" title="Connection Status"></div>
+            </div>
             
-            <!-- Mobile Controls -->
-            <div id="controls" style="display: none;">
-                <button id="btn-left" class="control-btn">←</button>
-                <button id="btn-right" class="control-btn">→</button>
+            <!-- Mobile Controls Zones -->
+            <div id="controls-layer" style="display: none;">
+                <div id="zone-left" class="control-zone"></div>
+                <div id="zone-right" class="control-zone"></div>
             </div>
         </div>
     </div>
