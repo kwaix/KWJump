@@ -31,29 +31,25 @@ jobs:
         run: npm ci
 
       - name: Debug Secrets Availability
-        # This step prints which secrets are found without revealing their values.
         run: |
           echo "Checking for secrets availability..."
-          if [ -n "$CHECK_SUPABASEURL" ]; then echo "SUPABASEURL is set"; else echo "SUPABASEURL is missing"; fi
-          if [ -n "$CHECK_SUPABASEANONKEY" ]; then echo "SUPABASEANONKEY is set"; else echo "SUPABASEANONKEY is missing"; fi
-
-          # Fallback checks
           if [ -n "$CHECK_SUPABASE_URL" ]; then echo "SUPABASE_URL is set"; else echo "SUPABASE_URL is missing"; fi
-          if [ -n "$CHECK_VITE_SUPABASE_URL" ]; then echo "VITE_SUPABASE_URL is set"; else echo "VITE_SUPABASE_URL is missing"; fi
+          if [ -n "$CHECK_SUPABASEURL" ]; then echo "SUPABASEURL is set"; else echo "SUPABASEURL is missing"; fi
+          if [ -n "$CHECK_SUPABASE_ANON_KEY" ]; then echo "SUPABASE_ANON_KEY is set"; else echo "SUPABASE_ANON_KEY is missing"; fi
+          if [ -n "$CHECK_ANONKEY" ]; then echo "ANONKEY is set"; else echo "ANONKEY is missing"; fi
         env:
-          CHECK_SUPABASEURL: ${{ secrets.SUPABASEURL }}
-          CHECK_SUPABASEANONKEY: ${{ secrets.SUPABASEANONKEY }}
           CHECK_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          CHECK_VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          CHECK_SUPABASEURL: ${{ secrets.SUPABASEURL }}
+          CHECK_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          CHECK_ANONKEY: ${{ secrets.ANONKEY }}
 
       - name: Build
         run: npm run build
         env:
           # Inject secrets into the build process.
-          # User confirmed secret names are SUPABASEURL and SUPABASEANONKEY.
-          # We prioritize these, but keep fallbacks just in case.
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASEURL || secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASEANONKEY || secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || secrets.ANONKEY }}
+          # We check VITE_ prefixed secrets first, as users often copy .env key names directly.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASEURL || secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASEANONKEY || secrets.ANONKEY || secrets.SUPABASE_ANON_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

@@ -27,23 +27,7 @@ if (typeof window !== 'undefined') {
     }
 }
 
-function cleanConfig(value) {
-    if (!value) return null;
-    // Remove quotes if the user accidentally included them in the secret value
-    return value.trim().replace(/^["'](.*)["']$/, '$1');
-}
-
-export async function initSupabase(rawUrl, rawKey) {
-    const url = cleanConfig(rawUrl);
-    const key = cleanConfig(rawKey);
-
-    // Debugging Config Injection
-    if (rawUrl) console.log(`Supabase URL provided (Length: ${rawUrl.length})`);
-    else console.warn("Supabase URL is missing/empty");
-
-    if (rawKey) console.log(`Supabase Key provided (Length: ${rawKey.length})`);
-    else console.warn("Supabase Key is missing/empty");
-
+export async function initSupabase(url, key) {
     // Retry finding window.supabase in case of async loading race condition
     if (!window.supabase) {
         console.warn("window.supabase not found immediately. Waiting 500ms...");
@@ -68,7 +52,7 @@ export async function initSupabase(rawUrl, rawKey) {
         const reasons = [];
         if (!url) reasons.push("Missing VITE_SUPABASE_URL");
         if (!key) reasons.push("Missing VITE_SUPABASE_ANON_KEY");
-        if (!window.supabase) reasons.push("Supabase JS library not loaded (window.supabase is undefined)");
+        if (!window.supabase) reasons.push("Supabase JS library not loaded (check CDN in index.html)");
 
         setOfflineMode(`Missing Config/Lib: ${reasons.join(", ")}`);
     }
