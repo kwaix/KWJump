@@ -52,7 +52,7 @@ export async function initSupabase(url, key) {
         const reasons = [];
         if (!url) reasons.push("Missing VITE_SUPABASE_URL");
         if (!key) reasons.push("Missing VITE_SUPABASE_ANON_KEY");
-        if (!window.supabase) reasons.push("Supabase JS library not loaded (window.supabase is undefined)");
+        if (!window.supabase) reasons.push("Supabase JS library not loaded (check CDN in index.html)");
 
         setOfflineMode(`Missing Config/Lib: ${reasons.join(", ")}`);
     }

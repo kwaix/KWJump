@@ -31,24 +31,17 @@ jobs:
         run: npm ci
 
       - name: Debug Secrets Availability
-        # This step prints which secrets are found without revealing their values.
-        # It helps verify if the secrets are named correctly in GitHub Settings.
         run: |
           echo "Checking for secrets availability..."
           if [ -n "$CHECK_SUPABASE_URL" ]; then echo "SUPABASE_URL is set"; else echo "SUPABASE_URL is missing"; fi
           if [ -n "$CHECK_SUPABASEURL" ]; then echo "SUPABASEURL is set"; else echo "SUPABASEURL is missing"; fi
-          if [ -n "$CHECK_VITE_SUPABASE_URL" ]; then echo "VITE_SUPABASE_URL is set"; else echo "VITE_SUPABASE_URL is missing"; fi
-
           if [ -n "$CHECK_SUPABASE_ANON_KEY" ]; then echo "SUPABASE_ANON_KEY is set"; else echo "SUPABASE_ANON_KEY is missing"; fi
           if [ -n "$CHECK_ANONKEY" ]; then echo "ANONKEY is set"; else echo "ANONKEY is missing"; fi
-          if [ -n "$CHECK_VITE_SUPABASE_ANON_KEY" ]; then echo "VITE_SUPABASE_ANON_KEY is set"; else echo "VITE_SUPABASE_ANON_KEY is missing"; fi
         env:
           CHECK_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           CHECK_SUPABASEURL: ${{ secrets.SUPABASEURL }}
-          CHECK_VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           CHECK_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           CHECK_ANONKEY: ${{ secrets.ANONKEY }}
-          CHECK_VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Build
         run: npm run build
