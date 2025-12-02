@@ -39,8 +39,8 @@ jobs:
         env:
           # Inject secrets into the build process
           # We check multiple variations to be robust against naming differences
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASEURL || secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASEANONKEY || secrets.ANONKEY || secrets.SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASEURL || secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASEANONKEY || secrets.ANONKEY || secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
