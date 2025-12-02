@@ -17,28 +17,52 @@
 let supabase;
 let isOfflineMode = false;
 
+// Debug helper to check CDN load status immediately
+if (typeof window !== 'undefined') {
+    if (window.supabase) {
+        console.log("Supabase Library Status: Loaded via CDN.");
+    } else {
+        console.warn("Supabase Library Status: NOT FOUND on module load. It might load later or failed.");
+        // Attempt to check again after a short delay in init
+    }
+}
+
 export async function initSupabase(url, key) {
+    // Retry finding window.supabase in case of async loading race condition
+    if (!window.supabase) {
+        console.warn("window.supabase not found immediately. Waiting 500ms...");
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
     if (url && key && window.supabase) {
         try {
             supabase = window.supabase.createClient(url, key);
-            console.log("Supabase initialized successfully.");
+
+            // Basic connectivity check (optional, but good for verification)
+            // Just creating the client doesn't mean we are connected.
+            // We can assume online for now, errors will be caught in operations.
+            console.log("Supabase initialized successfully (Client created).");
             isOfflineMode = false;
+            window.supabaseOfflineReason = null; // Clear any previous reason
         } catch (e) {
             console.error("Supabase init failed:", e);
-            console.warn("Falling back to offline mode.");
-            isOfflineMode = true;
+            setOfflineMode(`Init Exception: ${e.message}`);
         }
     } else {
         const reasons = [];
         if (!url) reasons.push("Missing VITE_SUPABASE_URL");
         if (!key) reasons.push("Missing VITE_SUPABASE_ANON_KEY");
-        if (!window.supabase) reasons.push("Supabase JS library not loaded (check CDN)");
+        if (!window.supabase) reasons.push("Supabase JS library not loaded (window.supabase is undefined)");
 
-        console.warn(`Supabase integration disabled. Running in Offline Mode. Reason(s): ${reasons.join(", ")}`);
-        console.warn("To enable Supabase, create a .env file with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
-        isOfflineMode = true;
-        return false;
+        setOfflineMode(`Missing Config/Lib: ${reasons.join(", ")}`);
     }
+}
+
+function setOfflineMode(reason) {
+    console.warn(`Supabase integration disabled. Running in Offline Mode. Reason: ${reason}`);
+    console.warn("To enable Supabase, ensure environment variables are set in .env (local) or GitHub Secrets (production).");
+    isOfflineMode = true;
+    window.supabaseOfflineReason = reason; // Expose for debugging
 }
 
 export function isOnline() {
