@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KWMeJump</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="start-screen">
+                <h1>KWMeJump</h1>
+                <p>Tap to Start</p>
+                <div id="leaderboard-preview">Loading Leaderboard...</div>
+            </div>
+            <div id="game-over-screen" style="display: none;">
+                <h1>Game Over</h1>
+                <p>Score: <span id="final-score">0</span></p>
+                <input type="text" id="username-input" placeholder="Enter your name" maxlength="10">
+                <button id="submit-score-btn">Submit Score</button>
+                <button id="restart-btn">Try Again</button>
+                <div id="leaderboard-list"></div>
+            </div>
+            <div id="score-hud" style="display: none;">Score: <span id="current-score">0</span></div>
+        </div>
+    </div>
+    <script type="module" src="game.js"></script>
+</body>
+</html>
