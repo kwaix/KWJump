@@ -147,19 +147,28 @@ function setupInputs() {
         if (gameState === 'PLAYING') player.vx = 0;
     };
 
+    // Grab zone elements
+    const leftZone = document.getElementById('zone-left');
+    const rightZone = document.getElementById('zone-right');
+
+    const handleLeft = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if (gameState === 'PLAYING') player.vx = -MOVE_SPEED;
+    };
+
     // Left Zone
     leftZone.addEventListener('touchstart', handleLeft);
     leftZone.addEventListener('mousedown', handleLeft);
-    leftZone.addEventListener('touchend', stopMove);
-    leftZone.addEventListener('mouseup', stopMove);
-    leftZone.addEventListener('mouseleave', stopMove);
+    leftZone.addEventListener('touchend', stopBtnMove);
+    leftZone.addEventListener('mouseup', stopBtnMove);
+    leftZone.addEventListener('mouseleave', stopBtnMove);
 
     // Right Zone
     rightZone.addEventListener('touchstart', handleRight);
     rightZone.addEventListener('mousedown', handleRight);
-    rightZone.addEventListener('touchend', stopMove);
-    rightZone.addEventListener('mouseup', stopMove);
-    rightZone.addEventListener('mouseleave', stopMove);
+    rightZone.addEventListener('touchend', stopBtnMove);
+    rightZone.addEventListener('mouseup', stopBtnMove);
+    rightZone.addEventListener('mouseleave', stopBtnMove);
 
     // Canvas Tap (Top Half - since bottom is covered by zones) for Jump
     // Note: Since the control zones are overlaying the canvas at the bottom,
