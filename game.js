@@ -88,23 +88,17 @@ function init() {
         // Generate initial clouds
         generateClouds();
 
-        // Load config from Vite environment variables
-        // Use try-catch for env access just in case
-        try {
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-            initSupabase(supabaseUrl, supabaseAnonKey);
-
-            // Debugging helper for UI
+        // Initialize Supabase
+        // We don't await this strictly to allow game to start faster,
+        // but the leaderboard might pop in later.
+        initSupabase().then(() => {
             if (window.supabaseOfflineReason) {
                 console.log("Supabase Offline Reason:", window.supabaseOfflineReason);
             }
-        } catch (e) {
-            console.warn("Env vars missing or failed, running offline.", e);
-            initSupabase(null, null);
-        }
+            updateLeaderboardDisplay();
+        });
 
-        // Initial Render
+        // Initial Render (will update again when supabase inits)
         updateLeaderboardDisplay();
         requestAnimationFrame(gameLoop);
         console.log("Game Initialized.");
