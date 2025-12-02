@@ -19,17 +19,30 @@ let isOfflineMode = false;
 
 export function initSupabase(url, key) {
     if (url && key && window.supabase) {
-        supabase = window.supabase.createClient(url, key);
-        console.log("Supabase initialized");
-        isOfflineMode = false;
+        try {
+            supabase = window.supabase.createClient(url, key);
+            console.log("Supabase initialized successfully.");
+            isOfflineMode = false;
+        } catch (e) {
+            console.error("Supabase init failed:", e);
+            console.warn("Falling back to offline mode.");
+            isOfflineMode = true;
+        }
     } else {
-        console.warn("Supabase credentials missing. Switching to offline mode.");
+        const reasons = [];
+        if (!url) reasons.push("Missing VITE_SUPABASE_URL");
+        if (!key) reasons.push("Missing VITE_SUPABASE_ANON_KEY");
+        if (!window.supabase) reasons.push("Supabase JS library not loaded (check CDN)");
+
+        console.warn(`Supabase integration disabled. Running in Offline Mode. Reason(s): ${reasons.join(", ")}`);
+        console.warn("To enable Supabase, create a .env file with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
         isOfflineMode = true;
     }
 }
 
 export async function fetchLeaderboard() {
     if (isOfflineMode) {
+        console.log("Fetching local leaderboard (Offline Mode)");
         return fetchLocalLeaderboard();
     }
     if (!supabase) return [];
@@ -45,7 +58,7 @@ export async function fetchLeaderboard() {
         return data;
     } catch (e) {
         console.error("Error fetching leaderboard:", e);
-        // 네트워크/서버 문제면 로컬 리더보드로 fallback
+        // Fallback to local if network fails despite being "online"
         return fetchLocalLeaderboard();
     }
 }
