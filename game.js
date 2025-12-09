@@ -10,8 +10,6 @@ import balloonRedImgUrl from './src/assets/balloon_red.svg';
 // Global error handler for mobile debugging
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo + '\nColumn: ' + columnNo + '\nError object: ' + JSON.stringify(error));
-    // Uncomment for aggressive debugging on mobile
-    // alert('Error: ' + msg);
     return false;
 };
 
